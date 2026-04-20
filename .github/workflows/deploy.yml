@@ -1,0 +1,48 @@
+
+
+
+name: Deploy to Render
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Setup NodeJs
+      uses: actions/setup-node@v3
+      with:
+        node-version: "20"
+        cache: "npm"
+
+    - name: Install Dependencies
+      run: npm ci
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'ref/heads/main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Deploy on Render
+        uses: johnbeynon/render-deploy-action@v0.0.8
+        with:
+          service-id: ${{ secrets.RENDER_SERVICE_ID }}
+          api-key: ${{ secrets.RENDER_API_KEY }}
+          wait-for-success: true
+          wait_deploy: true
