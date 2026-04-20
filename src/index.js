@@ -10,8 +10,6 @@ let server;
 
 const startServer = async () => {
   try {
-    logger.info('Starting Chat + Video Call Server...');
-
     // 1. Connect to Database
     await connectDB();
     logger.info('✅ MongoDB connected successfully');
