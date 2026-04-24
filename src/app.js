@@ -3,6 +3,7 @@ import logger from "./utils/logger.js"
 import dotenv from "dotenv"
 import authRoute from "./routes/auth-route.js"
 import cookieParser from "cookie-parser"
+import cors from "cors"
 
 const app = express()
 dotenv.config({
@@ -10,6 +11,7 @@ dotenv.config({
 })
 
 app.set('trust proxy', 1);
+app.use(cors());
 
 app.use(express.json());
 app.use(cookieParser());
