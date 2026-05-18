@@ -1,9 +1,11 @@
 import express from "express"
 import logger from "./utils/logger.js"
 import dotenv from "dotenv"
-import authRoute from "./routes/auth-route.js"
 import cookieParser from "cookie-parser"
 import cors from "cors"
+
+import authRoute from "./routes/auth-route.js"
+import userRoute from "./routes/user-rouote.js"
 
 const app = express()
 dotenv.config({
@@ -24,5 +26,6 @@ app.use(express.urlencoded({ extended: true }));
 
 
 app.use("/api/v1/auth", authRoute)
+app.use("/api/v1", userRoute)
 
 export {app}
