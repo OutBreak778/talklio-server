@@ -18,7 +18,7 @@ export const registerUser = async (req, res) => {
     // ✅ CASE 1: User already exists
     if (user) {
       logger.warn(`Email already exists: ${email}`);
-      
+
       // Check if user is already verified
       if (user.isVerified) {
         return res.status(409).json({
@@ -28,25 +28,32 @@ export const registerUser = async (req, res) => {
           verified: true,
         });
       }
-      
+
       // ✅ User exists but NOT verified - Resend OTP
       logger.info(`User not verified. Resending OTP to: ${email}`);
-      
+
       // Generate new OTP
       const otp = user.generateOTP();
       await user.save();
-      
+
       // Send verification email
-      await emailService.sendVerificationOTP(email, otp, 10);
-      
+      try {
+        await emailService.sendVerificationOTP(email, otp, 10);
+        logger.info(`OTP sent successfully to ${user.email}`);
+      } catch (emailError) {
+        logger.error(`OTP sending failed for ${user.email}:`, {
+          message: emailError.message,
+        });
+      }
       return res.status(200).json({
         success: true,
-        message: "Account not verified. New verification code sent to your email.",
+        message:
+    "Registration successful. If you do not receive the verification email, you can request a new OTP.",
         data: {
           email: user.email,
           requiresVerification: true,
           userId: user._id,
-          existingUser: true
+          existingUser: true,
         },
       });
     }
@@ -76,7 +83,8 @@ export const registerUser = async (req, res) => {
     // Return user data
     return res.status(201).json({
       success: true,
-      message: "Registration successful! Please check your email for verification code.",
+      message:
+        "Registration successful! Please check your email for verification code.",
       data: {
         user: {
           id: user._id,
@@ -88,7 +96,6 @@ export const registerUser = async (req, res) => {
         requiresVerification: true,
       },
     });
-    
   } catch (error) {
     logger.error(`Registration failed for email: ${req.body?.email}`, {
       errorName: error.name,
@@ -107,7 +114,8 @@ export const registerUser = async (req, res) => {
 
     return res.status(500).json({
       success: false,
-      message: error.message || "Failed to register user. Please try again later.",
+      message:
+        error.message || "Failed to register user. Please try again later.",
     });
   }
 };
