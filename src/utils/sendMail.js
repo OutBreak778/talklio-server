@@ -316,6 +316,9 @@ class EmailService {
       connectionTimeout: 15000,   // 15s
       greetingTimeout: 15000,
       socketTimeout: 20000,
+      dns: {                        // ← Add this
+    order: 'ipv4first'          // or 'verbatim'
+  },
       pool: true,                 // Enable connection pooling
       maxConnections: 5,
       maxMessages: 100,
