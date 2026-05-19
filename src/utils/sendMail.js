@@ -1,5 +1,5 @@
-import nodemailer from "nodemailer";
 import logger from "./logger.js";
+import { BrevoClient } from '@getbrevo/brevo';
 
 const emailTemplates = {
   // Verification OTP Email
@@ -297,32 +297,28 @@ const emailTemplates = {
 
 class EmailService {
   constructor() {
-    this.transporter = null;
+    this.brevo = null;
+    this.senderEmail = process.env.BREVO_SENDER_EMAIL; 
+    this.senderName = process.env.BREVO_SENDER_NAME || "Talklio Support";
     this.initializeTransporter();
   }
 
   initializeTransporter() {
     try {
-      this.transporter = nodemailer.createTransport({
-        host: "smtp.gmail.com",
-        port: 587,
-        secure: false, // TLS, not SSL
-        family: 4, // Force IPv4
-        auth: {
-          user: process.env.MAIL_USER,
-          pass: process.env.MAIL_PASS,
-        },
-        tls: {
-          ciphers: "SSLv3",
-          rejectUnauthorized: false, // Sometimes needed on Render
-        },
-        connectionTimeout: 30000,
+      if (!process.env.BREVO_API_KEY) {
+        console.warn(
+          "⚠️ BREVO_API_KEY not configured. Emails will not be sent.",
+        );
+        return;
+      }
+
+      this.brevo = new BrevoClient({
+        apiKey: process.env.BREVO_API_KEY
       });
 
-      logger.info("✉️ Email service initialized successfully");
+      console.log("✉️ Brevo email service initialized successfully");
     } catch (error) {
-      logger.error("Failed to initialize email service:", error);
-      throw error;
+      console.error("Failed to initialize Brevo:", error);
     }
   }
 
@@ -338,55 +334,38 @@ class EmailService {
   }
 
   async sendEmail(to, template, templateData = {}) {
+    if (!this.brevo) {
+      console.warn(`Email not sent (Brevo not configured): ${to}`);
+      return { success: false, message: "Email service not configured" };
+    }
+
     try {
-      // Validate email
-      if (!to || !this.isValidEmail(to)) {
-        throw new Error("Invalid recipient email address");
-      }
-
-      // Get template content
       const emailContent = template(templateData);
-
-      if (!emailContent || !emailContent.subject || !emailContent.html) {
-        throw new Error("Invalid email template");
-      }
-
-      const mailOptions = {
-        from: `"Talklio" <${process.env.MAIL_USER}>`,
-        to: to,
+      
+      // CORRECT WAY - Using the API from docs
+      const result = await this.brevo.transactionalEmails.sendTransacEmail({
         subject: emailContent.subject,
-        html: emailContent.html,
-        text: emailContent.text || this.stripHtml(emailContent.html),
-        headers: {
-          "X-Priority": "3",
-          "X-Mailer": "Talklio Email Service",
-          "List-Unsubscribe": `<mailto:unsubscribe@talklio.com>`,
+        htmlContent: emailContent.html,
+        textContent: emailContent.text || this.stripHtml(emailContent.html),
+        sender: { 
+          name: this.senderName, 
+          email: this.senderEmail 
         },
-      };
-
-      // Send email
-      const info = await this.transporter.sendMail(mailOptions);
-
-      logger.info(`📧 Email sent successfully`, {
-        messageId: info.messageId,
-        to: to,
-        subject: emailContent.subject,
-        timestamp: new Date().toISOString(),
+        to: [{ 
+          email: to, 
+          name: "User"   
+        }],
       });
 
+      console.log(`📧 Email sent to ${to}`, { messageId: result.messageId });
+      
       return {
         success: true,
-        messageId: info.messageId,
+        messageId: result.messageId,
         to: to,
-        subject: emailContent.subject,
       };
     } catch (error) {
-      logger.error(`❌ Failed to send email to ${to}:`, {
-        error: error.message,
-        code: error.code,
-        responseCode: error.responseCode,
-      });
-
+      console.error(`Failed to send email to ${to}:`, error.message);
       throw new Error(`Email delivery failed: ${error.message}`);
     }
   }
