@@ -36,15 +36,18 @@ export const registerUser = async (req, res) => {
       const otp = user.generateOTP();
       await user.save();
 
-      // Send verification email
-      try {
-        await emailService.sendVerificationOTP(email, otp, 10);
-        logger.info(`OTP sent successfully to ${user.email}`);
-      } catch (emailError) {
-        logger.error(`OTP sending failed for ${user.email}:`, {
-          message: emailError.message,
+      // Send verification email — NON-BLOCKING
+      emailService.sendVerificationOTP(email, otp, 10)
+        .then(() => {
+          logger.info(`OTP sent successfully to ${user.email}`);
+        })
+        .catch((emailError) => {
+          logger.error(`OTP sending failed for ${user.email}:`, {
+            message: emailError.message,
+            code: emailError.code,
+          });
+          // Do NOT throw — registration should still succeed
         });
-      }
       return res.status(200).json({
         success: true,
         message:
