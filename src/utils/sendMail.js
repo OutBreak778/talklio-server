@@ -304,16 +304,19 @@ class EmailService {
   initializeTransporter() {
     try {
       this.transporter = nodemailer.createTransport({
-        service: "gmail",
+        host: "smtp.gmail.com",
+        port: 587,
+        secure: false, // TLS, not SSL
+        family: 4, // Force IPv4
         auth: {
           user: process.env.MAIL_USER,
           pass: process.env.MAIL_PASS,
         },
-        pool: true, // Use pooled connections
-        maxConnections: 5,
-        maxMessages: 100,
-        rateDelta: 1000, // 1 second
-        rateLimit: 10, // Max 10 emails per second
+        tls: {
+          ciphers: "SSLv3",
+          rejectUnauthorized: false, // Sometimes needed on Render
+        },
+        connectionTimeout: 30000,
       });
 
       logger.info("✉️ Email service initialized successfully");
